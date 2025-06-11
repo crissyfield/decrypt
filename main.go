@@ -33,6 +33,7 @@ func init() {
 	CmdRoot.PersistentFlags().Bool("logging.json", false, "change logging format to JSON")
 
 	// Register sub-commands
+	CmdRoot.AddCommand(cmd.CmdDecrypt)
 	CmdRoot.AddCommand(cmd.CmdList)
 }
 

@@ -1,4 +1,4 @@
-package device
+package decrypt
 
 import (
 	"fmt"
@@ -23,8 +23,8 @@ var (
 	deviceManagerOnce sync.Once
 )
 
-// Find returns the first available USB device that matches the criteria.
-func Find() (*Device, error) {
+// FindDevice returns the first available USB device that matches the criteria.
+func FindDevice() (*Device, error) {
 	// Initialize device manager, if not done already
 	deviceManagerOnce.Do(func() {
 		deviceManager = frida.NewDeviceManager()

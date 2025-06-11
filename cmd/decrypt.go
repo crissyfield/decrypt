@@ -4,26 +4,25 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 
 	"github.com/crissyfield/decrypt/internal/decrypt"
 )
 
-// CmdList defines the 'list' command.
-var CmdList = &cobra.Command{
-	Use:   "list [flags]",
-	Short: "List all apps on the device",
-	Args:  cobra.NoArgs,
-	Run:   runList,
+// CmdDecrypt defines the 'decrypt' command.
+var CmdDecrypt = &cobra.Command{
+	Use:   "decrypt [flags] bundle_id",
+	Short: "Decrypt an iOS application",
+	Args:  cobra.ExactArgs(1),
+	Run:   runDecrypt,
 }
 
 // Initialize command options
 func init() {
 }
 
-// runList is called when the 'list' sub-command is used.
-func runList(_ *cobra.Command, _ []string) {
+// runDecrypt is called when the 'decrypt' sub-command is used.
+func runDecrypt(_ *cobra.Command, args []string) {
 	// Find the specified device
 	device, err := decrypt.FindDevice()
 	if err != nil {
@@ -44,21 +43,25 @@ func runList(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	// Render application list
-	tableData := pterm.TableData{{"Bundle ID", "Name", "Version"}}
+	// Find the application with the specified identifier
+	var application *decrypt.Application
 
 	for _, app := range apps {
-		tableData = append(tableData, []string{app.Identifier, app.Name, app.Version})
+		if app.Identifier == args[0] {
+			application = app
+			break
+		}
 	}
 
-	err = pterm.DefaultTable.
-		WithHasHeader().
-		WithHeaderRowSeparator("-").
-		WithData(tableData).
-		Render()
+	if application == nil {
+		slog.Error("Application not found", "identifier", "de.deutschepost.dhl")
+		os.Exit(1)
+	}
 
+	// Dump the application
+	err = application.Dump()
 	if err != nil {
-		slog.Error("Failed render application list", slog.Any("error", err))
+		slog.Error("Failed to dump application", slog.Any("error", err))
 		os.Exit(1)
 	}
 }
