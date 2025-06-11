@@ -12,6 +12,20 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+var (
+	// removeAppBundleFiles defines files to be removed from the app bundle's root directory.
+	removeAppBundleFiles = map[string]bool{
+		"iTunesMetadata.plist":     true, // Metadata file for iTunes
+		"embedded.mobileprovision": true, // Embedded provisioning profile
+	}
+
+	// removeAppBundleDirs defines directories to be removed from the app bundle recursively.
+	removeAppBundleDirs = map[string]bool{
+		"SC_Info":        true, // Provisioning profile information
+		"_CodeSignature": true, // Code signature information
+	}
+)
+
 // Dump dumps the application.
 func (app *Application) Dump() error {
 	// Establish SSH connection
@@ -44,6 +58,12 @@ func (app *Application) Dump() error {
 	err = pullDir(sftpClient, app.Path, "./temp")
 	if err != nil {
 		return fmt.Errorf("pull app directory: %w", err)
+	}
+
+	// Clean up app bundle
+	err = cleanupAppBundle("./temp")
+	if err != nil {
+		return fmt.Errorf("clean up app bundle: %w", err)
 	}
 
 	return nil
@@ -123,4 +143,34 @@ func pullFile(sftpClient *sftp.Client, remotePath string, localPath string) erro
 	}
 
 	return nil
+}
+
+// cleanupAppBundle performs cleanup operations on the app bundle.
+func cleanupAppBundle(root string) error {
+	// Remove files in app bundle root
+	for file := range removeAppBundleFiles {
+		// Remove file
+		path := filepath.Join(root, file)
+
+		err := os.Remove(path)
+		if err != nil && !os.IsNotExist(err) {
+			slog.Warn("Failed to remove file", slog.String("path", path), slog.Any("error", err))
+		}
+	}
+
+	// Remove directories recursively
+	return filepath.WalkDir(root, func(path string, d os.DirEntry, _ error) error {
+		// Skip if not what we're looking for
+		if !d.IsDir() || !removeAppBundleDirs[filepath.Base(path)] {
+			return nil
+		}
+
+		// Remove directory
+		err := os.RemoveAll(path)
+		if err != nil {
+			slog.Warn("Failed to remove directory", slog.String("path", path), slog.Any("error", err))
+		}
+
+		return filepath.SkipDir
+	})
 }
