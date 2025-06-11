@@ -66,6 +66,17 @@ func (app *Application) Dump() error {
 		return fmt.Errorf("clean up app bundle: %w", err)
 	}
 
+	// Collect binaries from the app bundle
+	binaries, err := collectBinaries("./temp")
+	if err != nil {
+		return fmt.Errorf("collect binaries: %w", err)
+	}
+
+	// Simply show for now
+	for _, binary := range binaries {
+		slog.Info("Collected binary", slog.Any("binary", binary))
+	}
+
 	return nil
 }
 
@@ -173,4 +184,36 @@ func cleanupAppBundle(root string) error {
 
 		return filepath.SkipDir
 	})
+}
+
+// collectBinaries collects Mach-O binaries in the app bundle.
+func collectBinaries(root string) ([]*MachOInfo, error) {
+	// Collect binaries recursively
+	var binaries []*MachOInfo
+
+	err := filepath.WalkDir(root, func(path string, d os.DirEntry, _ error) error {
+		// Skip directories
+		if d.IsDir() {
+			return nil
+		}
+
+		// Parse Mach-O binary
+		info, err := parseMachO(path)
+		if err != nil {
+			slog.Warn("Failed to parse Mach-O binary", slog.String("path", path), slog.Any("error", err))
+			return nil
+		}
+
+		if (info != nil) && (info.CryptID != 0) {
+			binaries = append(binaries, info)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("walk directory: %w", err)
+	}
+
+	return binaries, nil
 }
