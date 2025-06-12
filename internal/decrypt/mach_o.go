@@ -12,6 +12,9 @@ const (
 	// MH_MAGIC_64 is the magic number for 64-bit Mach-O binaries.
 	MH_MAGIC_64 = 0xFEEDFACF
 
+	// MH_EXECUTE is the file type for executable Mach-O binaries.
+	MH_EXECUTE = 2
+
 	// LC_ENCRYPTION_INFO_64 is the load command type for encryption info in 64-bit Mach-O binaries.
 	LC_ENCRYPTION_INFO_64 = 44
 )

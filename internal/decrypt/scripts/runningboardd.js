@@ -30,10 +30,10 @@ rpc.exports.extensions = function (bundleId) {
 
 		const id = plugin.bundleIdentifier().toString()
 		const path = plist.objectForKey_('Path').toString()
-		const exec = plist.objectForKey_('CFBundleExecutable').toString()
-		const abs = path + '/' + exec
+		const executable = plist.objectForKey_('CFBundleExecutable').toString()
+		const absolutePath = path + '/' + exec
 
-		extensions.push({ id, path, exec, abs })
+		extensions.push({ id, path, executable, absolutePath })
 	}
 
 	return extensions

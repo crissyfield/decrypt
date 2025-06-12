@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 )
@@ -102,14 +103,28 @@ func (app *Application) Dump() error {
 	defer runningboardScript.Close()
 
 	// Get main
-	main := runningboardScript.Call("main", app.Identifier)
-
-	slog.Info("Found main", slog.Any("main", main))
+	mainApp, ok := runningboardScript.Call("main", app.Identifier).(string)
+	if !ok {
+		return fmt.Errorf("decode main app path")
+	}
 
 	// Get extensions
-	extensions := runningboardScript.Call("extensions", app.Identifier)
+	var extensions []Extension
 
-	slog.Info("Found extensions", slog.Any("extensions", extensions))
+	err = mapstructure.Decode(
+		runningboardScript.Call("extensions", app.Identifier),
+		&extensions,
+	)
+
+	if err != nil {
+		return fmt.Errorf("decode extension paths: %w", err)
+	}
+
+	// Split binaries into main and extensions
+	appBinaries, extensionBinaries := splitBinaries(binaries, mainApp, extensions)
+
+	slog.Info("Found main app binaries", slog.Any("binaries", appBinaries))
+	slog.Info("Found extension binaries", slog.Any("binaries", extensionBinaries))
 
 	return nil
 }
@@ -218,36 +233,4 @@ func cleanupAppBundle(root string) error {
 
 		return filepath.SkipDir
 	})
-}
-
-// collectBinaries collects Mach-O binaries in the app bundle.
-func collectBinaries(root string) ([]*MachOInfo, error) {
-	// Collect binaries recursively
-	var binaries []*MachOInfo
-
-	err := filepath.WalkDir(root, func(path string, d os.DirEntry, _ error) error {
-		// Skip directories
-		if d.IsDir() {
-			return nil
-		}
-
-		// Parse Mach-O binary
-		info, err := parseMachO(path)
-		if err != nil {
-			slog.Warn("Failed to parse Mach-O binary", slog.String("path", path), slog.Any("error", err))
-			return nil
-		}
-
-		if (info != nil) && (info.CryptID != 0) {
-			binaries = append(binaries, info)
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		return nil, fmt.Errorf("walk directory: %w", err)
-	}
-
-	return binaries, nil
 }
