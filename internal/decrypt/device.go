@@ -81,3 +81,21 @@ func FindDevice() (*Device, error) {
 		OS:       params.OS.ID,
 	}, nil
 }
+
+// GetProcessID retrieves the process ID of a running application by its name.
+func (dev *Device) GetProcessID(name string) (int, error) {
+	// Enumerate processes
+	processes, err := dev.device.EnumerateProcesses(frida.ScopeMetadata)
+	if err != nil {
+		return 0, fmt.Errorf("enumerate processes: %w", err)
+	}
+
+	// Find process by name
+	for _, p := range processes {
+		if p.Name() == name {
+			return p.PID(), nil
+		}
+	}
+
+	return 0, fmt.Errorf("process not found [%s]", name)
+}

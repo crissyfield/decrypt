@@ -1,6 +1,7 @@
 package decrypt
 
 import (
+	"embed"
 	"fmt"
 	"io"
 	"log/slog"
@@ -11,6 +12,9 @@ import (
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 )
+
+//go:embed scripts/*
+var scriptsFS embed.FS
 
 var (
 	// removeAppBundleFiles defines files to be removed from the app bundle's root directory.
@@ -72,10 +76,40 @@ func (app *Application) Dump() error {
 		return fmt.Errorf("collect binaries: %w", err)
 	}
 
-	// Simply show for now
 	for _, binary := range binaries {
 		slog.Info("Collected binary", slog.Any("binary", binary))
 	}
+
+	// Get process IDs for chronod
+	chronodPID, err := app.device.GetProcessID("chronod")
+	if err != nil {
+		slog.Info("The 'chronod' service is not running on the device.")
+		slog.Info("Please start it manually.")
+
+		return fmt.Errorf("get process ID for chronod: %w", err)
+	}
+
+	slog.Info("Found chronod process ID", slog.Int("pid", chronodPID))
+
+	// Load script into runningboardd process
+	runningboarddContent, _ := scriptsFS.ReadFile("scripts/runningboardd.js")
+
+	runningboardScript, err := app.device.LoadScriptIntoProcess(string(runningboarddContent), "runningboardd")
+	if err != nil {
+		return fmt.Errorf("load script into process: %w", err)
+	}
+
+	defer runningboardScript.Close()
+
+	// Get main
+	main := runningboardScript.Call("main", app.Identifier)
+
+	slog.Info("Found main", slog.Any("main", main))
+
+	// Get extensions
+	extensions := runningboardScript.Call("extensions", app.Identifier)
+
+	slog.Info("Found extensions", slog.Any("extensions", extensions))
 
 	return nil
 }

@@ -9,11 +9,12 @@ import (
 
 // Application represents an application installed on the device.
 type Application struct {
-	Identifier string // Identifier is the unique identifier of the application.
-	Name       string // Name is the human-readable name of the application.
-	Version    string // Version is the version of the application.
-	Build      string // Build is the build number of the application.
-	Path       string // Path is the file system path to the application.
+	device     *Device // device is the device on which the application is installed.
+	Identifier string  // Identifier is the unique identifier of the application.
+	Name       string  // Name is the human-readable name of the application.
+	Version    string  // Version is the version of the application.
+	Build      string  // Build is the build number of the application.
+	Path       string  // Path is the file system path to the application.
 }
 
 // ListApplications retrieves all applications installed on the device.
@@ -46,6 +47,7 @@ func (dev *Device) ListApplications() ([]*Application, error) {
 
 		// Append application
 		applications = append(applications, &Application{
+			device:     dev,
 			Identifier: app.Identifier(),
 			Name:       app.Name(),
 			Version:    params.Version,
